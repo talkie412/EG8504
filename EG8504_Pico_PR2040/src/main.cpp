@@ -1,43 +1,68 @@
-#include <Arduino.h>
+#include <Arduino.h> // Arduino-Pico でも pico-sdk でも可
 #include <pico/stdlib.h>
-#include "image.h"
+#include "image.h" // 9600 byte = 320×240×1bit の生データ
 
-#define LCD_height 240
-#define LCD_width 80
+#define LCD_HEIGHT 240
+#define LCD_WIDTH 320
 
-extern const uint8_t data[];
+// ピン割り当て
+#define PIN_XSCL 4 // 画素クロック
+#define PIN_LP 5   // 行ラッチ
+#define PIN_DIN 6  // フレーム先頭マーク
+
+// データバス (GPIO0−3) 用マスク
+#define BUS_MASK 0x0F
+
+extern const uint8_t data[]; // image.h で定義
 
 void setup()
 {
-  gpio_init_mask(0x0F); // Initialize GPIO pins 0-3
-  gpio_set_dir_out_masked(0x0F);
+  // D0-D3
+  gpio_init_mask(BUS_MASK);
+  gpio_set_dir_out_masked(BUS_MASK);
 
-  gpio_init_mask(0x07 << 4); // Initialize GPIO pins 4-6
-  gpio_set_dir_out_masked(0x07 << 4);
+  // XSCL, LP, DIN
+  gpio_init(PIN_XSCL);
+  gpio_set_dir(PIN_XSCL, GPIO_OUT);
+  gpio_init(PIN_LP);
+  gpio_set_dir(PIN_LP, GPIO_OUT);
+  gpio_init(PIN_DIN);
+  gpio_set_dir(PIN_DIN, GPIO_OUT);
 }
 
 void loop()
 {
-  for (int i = 0; i < LCD_height; i++)
-  {
-    for (int j = 0; j < LCD_width; j++)
-    {
-      uint8_t value = data[j + i * LCD_width]; // Read directly from data array
-      gpio_put_masked(0x0F, value & 0x0F);     // Set PORTB equivalent
+  const uint32_t bytes_per_line = LCD_WIDTH / 8; // 40
+  const uint32_t n_pulses_line = LCD_WIDTH / 4;  // 80
 
-      gpio_put(4, 1); // XSCL HIGH
-      gpio_put(4, 0); // XSCL LOW
-    }
-    if (i == 0)
+  for (uint32_t y = 0; y < LCD_HEIGHT; ++y)
+  {
+    const uint8_t *row = &data[y * bytes_per_line];
+
+    // 40 バイト = 80 ニブル = 80 XSCL パルス
+    for (uint32_t byte_ix = 0; byte_ix < bytes_per_line; ++byte_ix)
     {
-      gpio_put(6, 1); // DIN HIGH
+      uint8_t b = row[byte_ix];
+
+      // 上位・下位ニブルをそのまま D3-D0 に出力
+      gpio_put_masked(BUS_MASK, (b >> 4) & BUS_MASK);
+      gpio_put(PIN_XSCL, 1);
+      gpio_put(PIN_XSCL, 0);
+
+      gpio_put_masked(BUS_MASK, b & BUS_MASK);
+      gpio_put(PIN_XSCL, 1);
+      gpio_put(PIN_XSCL, 0);
     }
-    gpio_put(5, 1); // LP HIGH
-    gpio_put(5, 0); // LP LOW
-    if (i == 0)
-    {
-      gpio_put(6, 0); // DIN LOW
-    }
-    sleep_us(10); // Delay in microseconds
+
+    // 行ラッチ & DIN パルス（フレーム先頭だけ DIN=High）
+    if (y == 0)
+      gpio_put(PIN_DIN, 1);
+    gpio_put(PIN_LP, 1);
+    gpio_put(PIN_LP, 0);
+    if (y == 0)
+      gpio_put(PIN_DIN, 0);
+
+    // 必要ならウェイト（FPGA や LCD の最小 LP サイクルに合わせる）
+    // sleep_us(2);
   }
 }
