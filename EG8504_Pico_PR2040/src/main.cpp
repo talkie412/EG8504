@@ -13,7 +13,7 @@
 // データバス (GPIO0−3) 用マスク
 #define BUS_MASK 0x0F
 
-extern const uint8_t data[]; // image.h で定義
+extern const uint8_t img[]; // image.h で定義
 
 void setup()
 {
@@ -37,7 +37,7 @@ void loop()
 
   for (uint32_t y = 0; y < LCD_HEIGHT; ++y)
   {
-    const uint8_t *row = &data[y * bytes_per_line];
+    const uint8_t *row = &img[y * bytes_per_line];
 
     // 40 バイト = 80 ニブル = 80 XSCL パルス
     for (uint32_t byte_ix = 0; byte_ix < bytes_per_line; ++byte_ix)
@@ -63,6 +63,6 @@ void loop()
       gpio_put(PIN_DIN, 0);
 
     // 必要ならウェイト（FPGA や LCD の最小 LP サイクルに合わせる）
-    // sleep_us(2);
+    sleep_us(500);
   }
 }

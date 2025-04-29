@@ -3,6 +3,6 @@
 
 #include <stdint.h>
 
-extern uint8_t image_data[];
+extern const uint8_t img[];
 
 #endif
