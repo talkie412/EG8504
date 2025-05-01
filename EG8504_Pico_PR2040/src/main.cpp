@@ -47,10 +47,12 @@ void loop()
       // 上位・下位ニブルをそのまま D3-D0 に出力
       gpio_put_masked(BUS_MASK, (b >> 4) & BUS_MASK);
       gpio_put(PIN_XSCL, 1);
+      sleep_us(1); // XSCL パルス幅
       gpio_put(PIN_XSCL, 0);
 
       gpio_put_masked(BUS_MASK, b & BUS_MASK);
       gpio_put(PIN_XSCL, 1);
+      sleep_us(1); // XSCL パルス幅
       gpio_put(PIN_XSCL, 0);
     }
 
@@ -58,6 +60,7 @@ void loop()
     if (y == 0)
       gpio_put(PIN_DIN, 1);
     gpio_put(PIN_LP, 1);
+    sleep_us(1); // LP パルス幅
     gpio_put(PIN_LP, 0);
     if (y == 0)
       gpio_put(PIN_DIN, 0);
