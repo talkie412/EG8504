@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
-extern const uint8_t img[];
+// extern const uint8_t img[];
+extern const uint8_t img_ba[];
 
 #endif
